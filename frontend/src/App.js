@@ -9,8 +9,10 @@ import { Card, Title, DonutChart, BarChart } from '@tremor/react';
 import axios from 'axios';
 
 // Update this to your local or deployed backend URL as needed
-const API_BASE = 'http://127.0.0.1:8000';
+// const API_BASE = 'http://127.0.0.1:8000';
 // const API_BASE = 'https://envirozone-backend.onrender.com';
+// const API_BASE = 'http://127.0.0.1:8000';
+const API_BASE = 'https://envirozone-backend.onrender.com'; // Use your actual backend Render URL here
 
 const App = () => {
   const [skus, setSkus] = useState([]);
