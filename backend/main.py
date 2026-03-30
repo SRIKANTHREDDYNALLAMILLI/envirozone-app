@@ -94,9 +94,7 @@ class AddProductInput(BaseModel):
 class BulkAddInput(BaseModel):
     products: List[AddProductInput]
 
-
 # --- 4. API Endpoints ---
-
 @app.get("/api/products")
 async def get_products():
     conn = sqlite3.connect(DB_PATH)
@@ -105,8 +103,7 @@ async def get_products():
     conn.close()
     return [dict(r) for r in rows]
 
-
-# Function: Save Single Product to DB
+# Save Single Product to DB
 @app.post("/api/products/add")
 async def add_product(data: AddProductInput):
     mat_idx = 5 if 'Plastic' in data.material else (1 if 'Recycled' in data.material else 3)
@@ -127,8 +124,7 @@ async def add_product(data: AddProductInput):
         conn.close()
     return {"message": "Product successfully added to database!"}
 
-
-# Function: Save Bulk Products to DB from CSV
+# Save Bulk Products to DB from CSV
 @app.post("/api/products/bulk-add")
 async def bulk_add_products(data: BulkAddInput):
     conn = sqlite3.connect(DB_PATH)
@@ -154,8 +150,7 @@ async def bulk_add_products(data: BulkAddInput):
     conn.close()
     return {"message": f"Successfully imported {added_count} new products into the database!"}
 
-
-# Function: Sandbox Estimator (Does NOT save to DB)
+# Sandbox Estimator
 @app.post("/ai/product-estimate")
 async def ai_product_estimate(data: EstimateInput):
     mat_idx = 5 if 'Plastic' in data.material else (1 if 'Recycled' in data.material else 3)
@@ -171,8 +166,7 @@ async def ai_product_estimate(data: EstimateInput):
         "category": cat
     }
 
-
-# Function: Product Comparison
+# Product Comparison
 @app.post("/ai/compare-recommend")
 async def ai_compare_recommend(data: CompareInput):
     if len(data.skus) < 2: 
@@ -198,8 +192,7 @@ async def ai_compare_recommend(data: CompareInput):
         "ranked_list": ranked
     }
 
-
-# Function: Digital Product Passport
+# Digital Product Passport
 @app.post("/ai/generate-passport")
 async def generate_passport(data: PassportInput):
     conn = sqlite3.connect(DB_PATH)
@@ -232,8 +225,7 @@ async def generate_passport(data: PassportInput):
         "ai_compliance_status": "Ready for EU Market" if score > 70 else "Action Required: Low Recyclability"
     }
 
-
-# Function: Anomaly Detection
+# Anomaly Detection
 @app.get("/ai/anomaly-detection")
 async def ai_anomaly_detection():
     conn = sqlite3.connect(DB_PATH)
@@ -277,8 +269,7 @@ async def ai_anomaly_detection():
         "anomalies": anomalies
     }
 
-
-# Function: AI Eco-Label 
+# AI Eco-Label 
 @app.post("/ai/score-label")
 async def ai_score_label(data: ScoreLabelInput):
     conn = sqlite3.connect(DB_PATH)
@@ -323,8 +314,7 @@ async def ai_score_label(data: ScoreLabelInput):
         "explanation": explanation 
     }
 
-
-# Function: Gemini Supplier Data Extractor
+# Gemini Supplier Data Extractor
 @app.post("/ai/extract-data")
 async def ai_extract_data(data: ExtractInput):
     if not GEMINI_API_KEY:
@@ -350,7 +340,6 @@ async def ai_extract_data(data: ExtractInput):
         print(str(e))
         print("============================\n")
         raise HTTPException(status_code=500, detail="Gemini Extraction Error: Check Python Terminal")
-
 
 if __name__ == "__main__":
     import uvicorn
