@@ -4,12 +4,13 @@ import {
   CheckCircle, Info, Activity, AlertTriangle, Tag, Wand2, 
   Save, UploadCloud, Database, Calculator, LayoutGrid, List 
 } from 'lucide-react';
-import { Card, Title } from '@tremor/react';
+
+import { Card, Title, DonutChart, BarChart } from '@tremor/react';
 import axios from 'axios';
 
-// const API_BASE = 'http://127.0.0.1:8000';
-
-const API_BASE = 'https://envirozone-backend.onrender.com';
+// Update this to your local or deployed backend URL as needed
+const API_BASE = 'http://127.0.0.1:8000';
+// const API_BASE = 'https://envirozone-backend.onrender.com';
 
 const App = () => {
   const [skus, setSkus] = useState([]);
@@ -17,7 +18,7 @@ const App = () => {
   
   // 1. Dashboard States (Portfolio & Data Management)
   const [addMethod, setAddMethod] = useState('single'); 
-  const [portfolioView, setPortfolioView] = useState('cards'); // NEW: 'cards' or 'table'
+  const [portfolioView, setPortfolioView] = useState('cards'); 
   const [addFormData, setAddFormData] = useState({ 
     sku: '', 
     product_name: '', 
@@ -28,7 +29,7 @@ const App = () => {
   });
   const [addSuccess, setAddSuccess] = useState('');
 
-  // 2. Simulator States (AI Sandbox)
+  // 2. Simulator & Eco-Label States (Combined Screen)
   const [estFormData, setEstFormData] = useState({ 
     product_name: '', 
     material: 'Virgin Plastic', 
@@ -37,6 +38,10 @@ const App = () => {
   });
   const [estimateResult, setEstimateResult] = useState(null);
   const [loadingEst, setLoadingEst] = useState(false);
+  
+  const [labelSku, setLabelSku] = useState('');
+  const [labelData, setLabelData] = useState(null);
+  const [loadingLabel, setLoadingLabel] = useState(false);
   
   // 3. Compare states
   const [selectedSkus, setSelectedSkus] = useState([]);
@@ -51,19 +56,15 @@ const App = () => {
   // 5. Anomalies states
   const [anomalyData, setAnomalyData] = useState(null);
   const [loadingAnomalies, setLoadingAnomalies] = useState(false);
-  
-  // 6. Eco-Label states
-  const [labelSku, setLabelSku] = useState('');
-  const [labelData, setLabelData] = useState(null);
-  const [loadingLabel, setLoadingLabel] = useState(false);
 
-  // 7. Data Extractor states
+  // 6. Data Extractor states
   const [messyText, setMessyText] = useState('');
   const [extractedData, setExtractedData] = useState(null);
   const [loadingExtract, setLoadingExtract] = useState(false);
   const [extractError, setExtractError] = useState(null);
   const [saveExtractSuccess, setSaveExtractSuccess] = useState(false);
 
+  // --- Initial Data Fetch ---
   const fetchProducts = () => {
     axios.get(`${API_BASE}/api/products`)
       .then(res => setSkus(res.data))
@@ -73,6 +74,29 @@ const App = () => {
   useEffect(() => {
     fetchProducts();
   }, []);
+
+  // --- Dynamically calculate data for our Charts based on Live Database ---
+  const materialData = Object.entries(
+    skus.reduce((acc, sku) => {
+      acc[sku.material] = (acc[sku.material] || 0) + 1;
+      return acc;
+    }, {})
+  ).map(([name, value]) => ({ name, value }));
+
+  const uniqueCategories = [...new Set(skus.map(sku => sku.category))];
+  const pivotedCategoryData = [{ name: "Averages" }];
+  
+  const categoryStats = skus.reduce((acc, sku) => {
+    if (!acc[sku.category]) acc[sku.category] = { sum: 0, count: 0 };
+    acc[sku.category].sum += sku.footprint;
+    acc[sku.category].count += 1;
+    return acc;
+  }, {});
+
+  Object.entries(categoryStats).forEach(([cat, stats]) => {
+    pivotedCategoryData[0][cat] = parseFloat((stats.sum / stats.count).toFixed(2));
+  });
+
 
   // --- Handlers: Dashboard (Data Management & Add to Portfolio) ---
   const handleAddInputChange = (e) => {
@@ -146,7 +170,7 @@ const App = () => {
     reader.readAsText(file);
   };
 
-  // --- Handlers: AI Simulator (Sandbox) ---
+  // --- Handlers: AI Simulator & Eco-Label (Combined Screen) ---
   const handleEstInputChange = (e) => {
     setEstFormData({ ...estFormData, [e.target.name]: e.target.value });
   };
@@ -163,6 +187,18 @@ const App = () => {
       setEstimateResult(res.data); 
     } finally { 
       setLoadingEst(false); 
+    } 
+  };
+
+  const generateEcoLabel = async () => { 
+    if (!labelSku) return; 
+    setLoadingLabel(true); 
+    setLabelData(null); 
+    try { 
+      const res = await axios.post(`${API_BASE}/ai/score-label`, { sku: labelSku }); 
+      setLabelData(res.data); 
+    } finally { 
+      setLoadingLabel(false); 
     } 
   };
   
@@ -208,18 +244,6 @@ const App = () => {
     } 
   };
 
-  const generateEcoLabel = async () => { 
-    if (!labelSku) return; 
-    setLoadingLabel(true); 
-    setLabelData(null); 
-    try { 
-      const res = await axios.post(`${API_BASE}/ai/score-label`, { sku: labelSku }); 
-      setLabelData(res.data); 
-    } finally { 
-      setLoadingLabel(false); 
-    } 
-  };
-
   const handleExtractData = async () => { 
     if (!messyText) return; 
     setLoadingExtract(true); 
@@ -250,10 +274,33 @@ const App = () => {
     <div className="flex h-screen bg-[#F7F7F5] text-slate-900 font-sans overflow-hidden">
       
       {/* SIDEBAR NAVIGATION */}
-      <aside className="w-72 bg-slate-950 text-white p-8 shadow-2xl z-10 flex flex-col">
-        <div className="flex items-center gap-3 mb-10 flex-shrink-0">
-          <ShieldCheck className="text-emerald-400 w-8 h-8" />
-          <h1 className="text-xl font-bold uppercase tracking-widest">EnviroZone</h1>
+      <aside className="w-80 bg-slate-950 text-white p-8 shadow-2xl z-10 flex flex-col">
+        
+        {/* NEW CUSTOM BRANDING LOGO & TEXT */}
+        <div className="flex items-center gap-4 mb-10 flex-shrink-0">
+          <div className="relative flex items-center justify-center w-12 h-14">
+            {/* Outer Blue Glow */}
+            <div className="absolute inset-0 bg-blue-600 blur-[12px] opacity-60 rounded-full"></div>
+            
+            {/* Shield Base */}
+            <svg viewBox="0 0 24 24" className="relative z-10 w-full h-full text-[#0a1930] fill-current drop-shadow-md">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            
+            {/* White Geometric Shape */}
+            <svg viewBox="0 0 24 24" className="absolute z-20 w-7 h-7 text-white opacity-90" fill="none" stroke="currentColor" strokeWidth="1" strokeLinejoin="round">
+              <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" />
+              <line x1="12" y1="22" x2="12" y2="15.5" />
+              <polyline points="22 8.5 12 15.5 2 8.5" />
+              <polyline points="2 15.5 12 8.5 22 15.5" />
+              <line x1="12" y1="2" x2="12" y2="8.5" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-white tracking-tight leading-none">
+              TCS Envirozone<sup className="text-[10px] font-black uppercase ml-0.5">AI</sup> 4.0
+            </h1>
+          </div>
         </div>
         
         <nav className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
@@ -263,7 +310,7 @@ const App = () => {
             className={`w-full flex items-center p-4 rounded-xl gap-3 font-medium transition-all duration-200 ${activeTab === 'dashboard' ? 'bg-indigo-600 shadow-lg text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
           >
             <Database size={18}/> 
-            Portfolio & Data Entry
+            SKU Registry
           </button>
           
           <button 
@@ -271,7 +318,7 @@ const App = () => {
             className={`w-full flex items-center p-4 rounded-xl gap-3 font-medium transition-all duration-200 ${activeTab === 'simulator' ? 'bg-emerald-600 shadow-lg text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
           >
             <Calculator size={18}/> 
-            AI Footprint Simulator
+            Simulator and Eco-Label
           </button>
 
           <button 
@@ -296,14 +343,6 @@ const App = () => {
           >
             <Activity size={18}/> 
             AI Insights & Audit
-          </button>
-          
-          <button 
-            onClick={() => setActiveTab('ecolabel')} 
-            className={`w-full flex items-center p-4 rounded-xl gap-3 font-medium transition-all duration-200 ${activeTab === 'ecolabel' ? 'bg-amber-500 shadow-lg text-slate-900' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-          >
-            <Tag size={18}/> 
-            AI Eco-Label
           </button>
           
           <div className="my-6 border-t border-slate-800"></div>
@@ -356,12 +395,12 @@ const App = () => {
                 </div>
               )}
 
-              {/* SINGLE MANUAL ENTRY */}
+              {/* SINGLE MANUAL ENTRY WITH BLACK STYLING */}
               {addMethod === 'single' && (
                 <div className="animate-in fade-in duration-300 max-w-4xl">
                   <form onSubmit={handleSaveSingleToPortfolio} className="grid grid-cols-2 gap-6">
                     <div className="col-span-2 lg:col-span-1">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">SKU Identifier</label>
+                      <label className="text-xs font-bold text-black uppercase tracking-widest mb-2 block">SKU Identifier</label>
                       <input 
                         name="sku" 
                         value={addFormData.sku} 
@@ -371,7 +410,7 @@ const App = () => {
                       />
                     </div>
                     <div className="col-span-2 lg:col-span-1">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Product Name</label>
+                      <label className="text-xs font-bold text-black uppercase tracking-widest mb-2 block">Product Name</label>
                       <input 
                         name="product_name" 
                         value={addFormData.product_name} 
@@ -383,7 +422,7 @@ const App = () => {
                     </div>
                     
                     <div className="col-span-2 lg:col-span-1">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Category</label>
+                      <label className="text-xs font-bold text-black uppercase tracking-widest mb-2 block">Category</label>
                       <select 
                         name="category" 
                         value={addFormData.category} 
@@ -397,7 +436,7 @@ const App = () => {
                       </select>
                     </div>
                     <div className="col-span-2 lg:col-span-1">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Primary Material</label>
+                      <label className="text-xs font-bold text-black uppercase tracking-widest mb-2 block">Primary Material</label>
                       <select 
                         name="material" 
                         value={addFormData.material} 
@@ -413,7 +452,7 @@ const App = () => {
                     </div>
                     
                     <div className="col-span-2 lg:col-span-1">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Weight (kg)</label>
+                      <label className="text-xs font-bold text-black uppercase tracking-widest mb-2 block">Weight (kg)</label>
                       <input 
                         name="weight" 
                         type="number" 
@@ -426,7 +465,7 @@ const App = () => {
                       />
                     </div>
                     <div className="col-span-2 lg:col-span-1">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Supply Distance (km)</label>
+                      <label className="text-xs font-bold text-black uppercase tracking-widest mb-2 block">Supply Distance (km)</label>
                       <input 
                         name="distance" 
                         type="number" 
@@ -440,7 +479,7 @@ const App = () => {
                     
                     <button 
                       type="submit" 
-                      className="col-span-2 mt-4 bg-indigo-600 text-white p-5 rounded-2xl font-bold hover:bg-indigo-700 transition-colors shadow-xl flex justify-center items-center gap-2"
+                      className="col-span-2 mt-4 bg-black text-white p-5 rounded-2xl font-bold hover:bg-slate-800 transition-colors shadow-xl flex justify-center items-center gap-2"
                     >
                       <Save size={20} /> Save New Product to Database
                     </button>
@@ -448,14 +487,14 @@ const App = () => {
                 </div>
               )}
 
-              {/* BULK CSV UPLOAD */}
+              {/* BULK CSV UPLOAD WITH BLACK STYLING */}
               {addMethod === 'bulk' && (
                 <div className="p-12 border-2 border-dashed border-slate-300 rounded-[32px] text-center bg-slate-50 hover:bg-slate-100 transition-colors animate-in fade-in duration-300">
                   <UploadCloud className="mx-auto text-indigo-500 w-16 h-16 mb-4" />
                   <h3 className="font-bold text-2xl mb-2 text-slate-800">Upload CSV File</h3>
                   <p className="text-slate-500 mb-8 max-w-md mx-auto">
                     Your CSV must contain the following exact column headers (lowercase): <br/><br/>
-                    <code className="bg-white px-2 py-1 rounded-md shadow-sm text-indigo-600 font-bold border border-slate-200">
+                    <code className="bg-white px-2 py-1 rounded-md shadow-sm text-black font-bold border border-slate-200">
                       sku, name, category, material, weight_kg, distance_km
                     </code>
                   </p>
@@ -464,7 +503,7 @@ const App = () => {
                       type="file" 
                       accept=".csv" 
                       onChange={handleBulkCSVUpload} 
-                      className="block text-sm text-slate-500 file:mr-4 file:py-3 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer transition-all shadow-md" 
+                      className="block text-sm text-slate-500 file:mr-4 file:py-3 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-black file:text-white hover:file:bg-slate-800 cursor-pointer transition-all shadow-md" 
                     />
                   </div>
                 </div>
@@ -561,15 +600,16 @@ const App = () => {
           </div>
         )}
 
-        {/* ======================= SCREEN 2: SIMULATOR (Sandbox) ======================= */}
+        {/* ======================= SCREEN 2: COMBINED SIMULATOR AND ECO-LABEL ======================= */}
         {activeTab === 'simulator' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <header className="mb-10">
-              <h2 className="text-3xl font-black tracking-tight">AI Footprint Simulator</h2>
-              <p className="text-slate-500 mt-1">Test hypothetical product parameters in a risk-free sandbox environment.</p>
+              <h2 className="text-3xl font-black tracking-tight">AI Footprint Simulator and Eco-Label</h2>
+              <p className="text-slate-500 mt-1">Test hypothetical product parameters and generate official AI score badges.</p>
             </header>
             
-            <Card className="p-10 rounded-[40px] border-none shadow-sm bg-emerald-50/30 ring-1 ring-emerald-100">
+            {/* PART A: SIMULATOR */}
+            <Card className="p-10 rounded-[40px] border-none shadow-sm bg-emerald-50/30 ring-1 ring-emerald-100 mb-8">
               <Title className="text-2xl font-black mb-8 flex items-center gap-2">
                 <Calculator className="text-emerald-500"/> AI Sandbox Estimator (No Database Save)
               </Title>
@@ -644,6 +684,61 @@ const App = () => {
                   </div>
                 )}
               </div>
+            </Card>
+
+            {/* PART B: ECO-LABEL GENERATOR */}
+            <Card className="p-10 rounded-[40px] border-none shadow-sm bg-amber-50/50 ring-1 ring-amber-100 transition-all duration-500 ease-in-out">
+              <Title className="text-2xl font-black mb-8 flex items-center gap-2">
+                <Tag className="text-amber-500"/> AI Eco-Label Badge
+              </Title>
+              <div className="flex gap-4 items-center mb-8">
+                <select 
+                  value={labelSku} 
+                  onChange={(e) => setLabelSku(e.target.value)} 
+                  className="p-4 bg-white rounded-2xl ring-1 ring-slate-200 outline-none focus:ring-2 focus:ring-amber-500 min-w-[300px]"
+                >
+                  <option value="" disabled>Select a product from portfolio...</option>
+                  {skus.map(s => <option key={s.sku} value={s.sku}>{s.name}</option>)}
+                </select>
+                <button 
+                  onClick={generateEcoLabel} 
+                  disabled={loadingLabel} 
+                  className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold hover:bg-amber-500 hover:text-slate-900 shadow-xl disabled:opacity-50 transition-all"
+                >
+                  {loadingLabel ? 'Grading...' : 'Generate Eco-Score Badge'}
+                </button>
+              </div>
+              
+              {labelData && (
+                <div className="mt-12 flex items-center justify-center animate-in zoom-in-95 duration-500">
+                  <div className="bg-white p-10 rounded-[40px] shadow-2xl ring-1 ring-slate-200 max-w-lg w-full text-center relative overflow-hidden">
+                    <div className={`absolute top-0 left-0 w-full h-4 ${labelData.color_theme === 'emerald' ? 'bg-emerald-500' : labelData.color_theme === 'sky' ? 'bg-sky-500' : labelData.color_theme === 'amber' ? 'bg-amber-500' : 'bg-rose-500'}`}></div>
+                    
+                    <div className="text-center mb-8">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Official AI Rating</p>
+                      <h3 className="text-2xl font-black text-slate-900">{labelData.name}</h3>
+                      <p className="text-sm text-slate-500">{labelData.sku}</p>
+                    </div>
+                    
+                    <div className="flex flex-col items-center justify-center mb-8">
+                      <div className={`w-32 h-32 rounded-full flex items-center justify-center shadow-inner mb-4 border-4 ${labelData.color_theme === 'emerald' ? 'bg-emerald-50 border-emerald-500 text-emerald-600' : labelData.color_theme === 'sky' ? 'bg-sky-50 border-sky-500 text-sky-600' : labelData.color_theme === 'amber' ? 'bg-amber-50 border-amber-500 text-amber-600' : 'bg-rose-50 border-rose-500 text-rose-600'}`}>
+                        <span className="text-7xl font-black">{labelData.grade}</span>
+                      </div>
+                      <div className={`px-6 py-2 rounded-full font-black text-sm uppercase tracking-widest text-white shadow-md ${labelData.color_theme === 'emerald' ? 'bg-emerald-500' : labelData.color_theme === 'sky' ? 'bg-sky-500' : labelData.color_theme === 'amber' ? 'bg-amber-500' : 'bg-rose-500'}`}>
+                        {labelData.eco_label}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-left">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Tag className="w-4 h-4 text-slate-400" />
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Score Justification ({labelData.score_100}/100)</p>
+                      </div>
+                      <p className="text-slate-700 font-medium leading-relaxed">{labelData.explanation}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </Card>
           </div>
         )}
@@ -790,18 +885,49 @@ const App = () => {
           </div>
         )}
 
-        {/* ======================= SCREEN 5: INSIGHTS ======================= */}
+        {/* ======================= SCREEN 5: INSIGHTS & CHARTS ======================= */}
         {activeTab === 'insights' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <header className="mb-10">
               <h2 className="text-3xl font-black tracking-tight">AI Insights & Audit</h2>
+              <p className="text-slate-500 mt-1">Visualize portfolio metrics and use AI to detect supply chain anomalies.</p>
             </header>
+
+            {/* TREMOR CHARTS SECTION */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+              <Card className="p-8 rounded-[32px] border-none shadow-sm bg-white ring-1 ring-slate-100">
+                <Title className="text-xl font-bold text-slate-800 mb-6">Material Distribution</Title>
+                <DonutChart
+                  className="h-64 mt-4"
+                  data={materialData}
+                  category="value"
+                  index="name"
+                  colors={["indigo", "cyan", "emerald", "amber", "rose", "fuchsia"]}
+                  valueFormatter={(number) => `${number} SKUs`}
+                />
+              </Card>
+
+              <Card className="p-8 rounded-[32px] border-none shadow-sm bg-white ring-1 ring-slate-100">
+                <Title className="text-xl font-bold text-slate-800 mb-6">Avg Footprint by Category</Title>
+                <BarChart
+                  className="h-64 mt-4"
+                  data={pivotedCategoryData}
+                  index="name"
+                  categories={uniqueCategories}
+                  colors={["indigo", "amber", "emerald", "rose", "cyan", "fuchsia"]}
+                  valueFormatter={(number) => `${number} kg`}
+                  yAxisWidth={48}
+                  showLegend={true}
+                />
+              </Card>
+            </div>
             
+            {/* EXISTING AI AUDIT SECTION */}
             <Card className="p-10 rounded-[40px] border-none shadow-sm bg-rose-50/50 ring-1 ring-rose-100 transition-all duration-500 ease-in-out">
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <Title className="text-2xl font-black flex items-center gap-2">
-                    <Activity className="text-rose-500"/> Portfolio Scan
+                    <Activity className="text-rose-500"/> AI Anomaly Scan
                   </Title>
                 </div>
                 <button 
@@ -865,67 +991,7 @@ const App = () => {
           </div>
         )}
 
-        {/* ======================= SCREEN 6: ECO-LABEL ======================= */}
-        {activeTab === 'ecolabel' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <header className="mb-10">
-              <h2 className="text-3xl font-black tracking-tight">AI Eco-Label Generator</h2>
-            </header>
-            
-            <Card className="p-10 rounded-[40px] border-none shadow-sm bg-amber-50/50 ring-1 ring-amber-100 transition-all duration-500 ease-in-out">
-              <div className="flex gap-4 items-center mb-8">
-                <select 
-                  value={labelSku} 
-                  onChange={(e) => setLabelSku(e.target.value)} 
-                  className="p-4 bg-white rounded-2xl ring-1 ring-slate-200 outline-none focus:ring-2 focus:ring-amber-500 min-w-[300px]"
-                >
-                  <option value="" disabled>Select a product to grade...</option>
-                  {skus.map(s => <option key={s.sku} value={s.sku}>{s.name}</option>)}
-                </select>
-                <button 
-                  onClick={generateEcoLabel} 
-                  disabled={loadingLabel} 
-                  className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold hover:bg-amber-500 hover:text-slate-900 shadow-xl disabled:opacity-50 transition-all"
-                >
-                  {loadingLabel ? 'Grading...' : 'Generate Eco-Score Badge'}
-                </button>
-              </div>
-              
-              {labelData && (
-                <div className="mt-12 flex items-center justify-center animate-in zoom-in-95 duration-500">
-                  <div className="bg-white p-10 rounded-[40px] shadow-2xl ring-1 ring-slate-200 max-w-lg w-full text-center relative overflow-hidden">
-                    <div className={`absolute top-0 left-0 w-full h-4 ${labelData.color_theme === 'emerald' ? 'bg-emerald-500' : labelData.color_theme === 'sky' ? 'bg-sky-500' : labelData.color_theme === 'amber' ? 'bg-amber-500' : 'bg-rose-500'}`}></div>
-                    
-                    <div className="text-center mb-8">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Official AI Rating</p>
-                      <h3 className="text-2xl font-black text-slate-900">{labelData.name}</h3>
-                      <p className="text-sm text-slate-500">{labelData.sku}</p>
-                    </div>
-                    
-                    <div className="flex flex-col items-center justify-center mb-8">
-                      <div className={`w-32 h-32 rounded-full flex items-center justify-center shadow-inner mb-4 border-4 ${labelData.color_theme === 'emerald' ? 'bg-emerald-50 border-emerald-500 text-emerald-600' : labelData.color_theme === 'sky' ? 'bg-sky-50 border-sky-500 text-sky-600' : labelData.color_theme === 'amber' ? 'bg-amber-50 border-amber-500 text-amber-600' : 'bg-rose-50 border-rose-500 text-rose-600'}`}>
-                        <span className="text-7xl font-black">{labelData.grade}</span>
-                      </div>
-                      <div className={`px-6 py-2 rounded-full font-black text-sm uppercase tracking-widest text-white shadow-md ${labelData.color_theme === 'emerald' ? 'bg-emerald-500' : labelData.color_theme === 'sky' ? 'bg-sky-500' : labelData.color_theme === 'amber' ? 'bg-amber-500' : 'bg-rose-500'}`}>
-                        {labelData.eco_label}
-                      </div>
-                    </div>
-                    
-                    <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-left">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Tag className="w-4 h-4 text-slate-400" />
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Score Justification ({labelData.score_100}/100)</p>
-                      </div>
-                      <p className="text-slate-700 font-medium leading-relaxed">{labelData.explanation}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </Card>
-          </div>
-        )}
-
-        {/* ======================= SCREEN 7: EXTRACTOR ======================= */}
+        {/* ======================= SCREEN 6: EXTRACTOR ======================= */}
         {activeTab === 'extractor' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <header className="mb-10">
