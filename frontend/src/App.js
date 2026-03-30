@@ -318,7 +318,7 @@ const App = () => {
             className={`w-full flex items-center p-4 rounded-xl gap-3 font-medium transition-all duration-200 ${activeTab === 'simulator' ? 'bg-emerald-600 shadow-lg text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
           >
             <Calculator size={18}/> 
-            Simulator and Eco-Label
+            AI Simulator and Eco-Label
           </button>
 
           <button 
@@ -611,7 +611,7 @@ const App = () => {
             {/* PART A: SIMULATOR */}
             <Card className="p-10 rounded-[40px] border-none shadow-sm bg-emerald-50/30 ring-1 ring-emerald-100 mb-8">
               <Title className="text-2xl font-black mb-8 flex items-center gap-2">
-                <Calculator className="text-emerald-500"/> AI Sandbox Estimator (No Database Save)
+                <Calculator className="text-emerald-500"/> AI Sandbox Estimator
               </Title>
               <div className="flex gap-10 items-start">
                 <form onSubmit={runAIEstimator} className="flex-1 grid grid-cols-2 gap-6">
