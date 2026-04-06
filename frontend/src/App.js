@@ -282,27 +282,27 @@ const App = () => {
         <div className="flex items-center gap-4 mb-10 flex-shrink-0">
           <div className="relative flex items-center justify-center w-12 h-14">
             {/* Outer Blue Glow */}
-            <div className="absolute inset-0 bg-blue-600 blur-[12px] opacity-60 rounded-full"></div>
+            {/* <div className="absolute inset-0 bg-blue-600 blur-[12px] opacity-60 rounded-full"></div> */}
             
             {/* Shield Base */}
-            <svg viewBox="0 0 24 24" className="relative z-10 w-full h-full text-[#0a1930] fill-current drop-shadow-md">
+            {/* <svg viewBox="0 0 24 24" className="relative z-10 w-full h-full text-[#0a1930] fill-current drop-shadow-md">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
+            </svg> */}
             
             {/* White Geometric Shape */}
-            <svg viewBox="0 0 24 24" className="absolute z-20 w-7 h-7 text-white opacity-90" fill="none" stroke="currentColor" strokeWidth="1" strokeLinejoin="round">
+            {/* <svg viewBox="0 0 24 24" className="absolute z-20 w-7 h-7 text-white opacity-90" fill="none" stroke="currentColor" strokeWidth="1" strokeLinejoin="round">
               <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" />
               <line x1="12" y1="22" x2="12" y2="15.5" />
               <polyline points="22 8.5 12 15.5 2 8.5" />
               <polyline points="2 15.5 12 8.5 22 15.5" />
               <line x1="12" y1="2" x2="12" y2="8.5" />
-            </svg>
+            </svg> */}
           </div>
-          <div>
+          {/* <div>
             <h1 className="text-xl font-bold text-white tracking-tight leading-none">
               TCS Envirozone<sup className="text-[10px] font-black uppercase ml-0.5">AI</sup> 4.0
             </h1>
-          </div>
+          </div> */}
         </div>
         
         <nav className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
